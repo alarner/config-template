@@ -1,11 +1,9 @@
 /*eslint strict:0 */
 'use strict';
 let _ = require('lodash');
-let async = require('async');
-let charm = require('charm');
+let term = require( 'terminal-kit' ).terminal;
 let keypress = require('keypress');
 let spawn = require('child_process').spawn;
-let chalk = require('chalk');
 
 const TAB = '    ';
 
@@ -18,7 +16,7 @@ function recurse(obj, counter, path) {
 		counter: counter
 	};
 	if(!_.isObject(obj)) {
-		returnObject.lines.push({line: counter, path: path, help: obj, value: ''});
+		returnObject.lines.push({line: counter, path: path, help: obj, value: '', deleted: false});
 		returnObject.counter++;
 	}
 	else {
@@ -79,67 +77,7 @@ function getTermSize(cb){
     });
 }
 
-// function getLineValue(lineString, readStream, charm, cb) {
-
-// 	let result = '';
-// 	readStream.resume();
-// 	readStream.setEncoding('utf8');
-// 	readStream.setRawMode('true');
-// 	// readStream.on('data', onReadLine);
-// 	readStream.on('keypress', onKeypress);
-
-// 	charm.write(lineString);
-
-// 	function onReadLine(text, key) {
-// 		console.log(text.toString());
-// 		// console.log(text);
-// 		// let charCode = text.charCodeAt(0);
-// 		// if(charCode === 27) {
-// 		// 	result = false;
-// 		// }
-// 		// if(charCode === 13 || charCode === 27) {
-// 		// 	readStream.removeListener('data', onReadLine);
-// 		// 	readStream.removeListener('keypress', onKeypress);
-// 		// 	readStream.pause();
-// 		// 	cb(null, result);
-// 		// }
-// 		// else if(charCode >= 32 && charCode <= 126) {
-// 		// 	result += text;
-// 		// 	// process.stdout.write(text);
-// 		// }
-// 	}
-
-// 	function onKeypress(text, key) {
-// 		let charCode = text.charCodeAt(0);
-// 		if(charCode === 27) {
-// 			result = false;
-// 		}
-// 		if(charCode === 13 || charCode === 27) {
-// 			// readStream.removeListener('data', onReadLine);
-// 			readStream.removeListener('keypress', onKeypress);
-// 			readStream.pause();
-// 			process.stdout.write('\n');
-// 			cb(null, result);
-// 		}
-// 		else if(key && key.name === 'backspace') {
-// 			// charm.write(text);
-// 			charm.position((x, y) => {
-// 				console.log(x, y);
-// 				charm.left(1);
-// 				charm.erase('end');
-// 			});
-// 			// 
-// 			// charm.delete('char', 1);
-// 		}
-// 		else if(charCode >= 32 && charCode <= 126) {
-// 			result += text;
-// 			process.stdout.write(text);
-// 		}
-// 	}
-// }
-
 function editor(background, lines, readStream) {
-	let c = charm();
 	let state = {
 		width: null,
 		height: null,
@@ -154,7 +92,7 @@ function editor(background, lines, readStream) {
 	};
 	return new Promise((resolve, reject) => {
 		keypress(process.stdin);
-		c.pipe(process.stdout);
+		// c.pipe(process.stdout);
 
 		readStream.resume();
 		readStream.setEncoding('utf8');
@@ -176,12 +114,10 @@ function editor(background, lines, readStream) {
 						if(result) {
 							readStream.removeListener('keypress', onKeyPress);
 							readStream.pause();
+							term.moveTo(1, state.height+1);
 							resolve();
 						}
 					});
-				}
-				else if(key.name === 'r') {
-					render();
 				}
 			}
 			else if(key.name === 'return') {
@@ -194,10 +130,10 @@ function editor(background, lines, readStream) {
 				goToLine(state.currentLineIndex-1);
 			}
 			else if(key.name === 'left') {
-				c.left(1);
+				term.left(1);
 			}
 			else if(key.name === 'right') {
-				c.right(1);
+				term.right(1);
 			}
 			else if(charCode >= 32 && charCode <= 126) {
 				process.stdout.write(text);
@@ -221,7 +157,6 @@ function editor(background, lines, readStream) {
 			}
 			else if(num >= lines.length) {
 				state.top = background.length - state.height + state.headerHeight + state.footerHeight;
-				// state.top = background.length - state.height - state.headerHeight - state.footerHeight;
 			}
 			else if(y > state.height - state.headerHeight) {
 				state.top += y - state.height + state.headerHeight;
@@ -241,36 +176,36 @@ function editor(background, lines, readStream) {
 		}
 
 		function render() {
-			c.reset();
+			term.eraseDisplay();
 			renderHeader();
 			renderBody();
 			renderFooter();
-			c.position(state.cursor.x, state.cursor.y);
+			term.moveTo(state.cursor.x, state.cursor.y);
 		}
 
 		function renderHeader() {
-			c.position(1, state.headerHeight);
-			c.erase('up');
-			c.position(1, state.headerHeight);
-			c.write('-'.repeat(state.width));
-			c.position(1, 1);
-			c.write('dimensions: '+state.width + 'x' + state.height+' ');
-			c.write('cursor: '+state.cursor.x + ',' + state.cursor.y+' ');
-			c.write(state.top.toString()+' '+(state.height - state.headerHeight).toString());
+			term.moveTo(1, state.headerHeight);
+			term.eraseDisplayAbove();
+			term.moveTo(1, state.headerHeight);
+			term('-'.repeat(state.width));
+			term.moveTo(1, 1);
+			term('dimensions: '+state.width + 'x' + state.height+' ');
+			term('cursor: '+state.cursor.x + ',' + state.cursor.y+' ');
+			term(state.top.toString()+' '+(state.height - state.headerHeight).toString());
 		}
 
 		function renderFooter() {
-			c.position(1, state.height - state.footerHeight + 1);
-			c.erase('down');
-			c.write('-'.repeat(state.width));
-			c.position(1, state.height - state.footerHeight + 2);
-			c.write('Description: '+lines[state.currentLineIndex].help);
+			term.moveTo(1, state.height - state.footerHeight + 1);
+			term.eraseDisplayBelow();
+			term('-'.repeat(state.width));
+			term.moveTo(1, state.height - state.footerHeight + 2);
+			term('Description: '+lines[state.currentLineIndex].help);
 		}
 
 		function renderBody() {
 			let endLine = state.height+state.top-state.footerHeight-state.headerHeight;
-			c.position(1, state.headerHeight+1);
-			c.write(
+			term.moveTo(1, state.headerHeight+1);
+			term(
 				background.slice(
 					state.top,
 					endLine
@@ -283,14 +218,13 @@ function editor(background, lines, readStream) {
 				}
 				let y = line.backgroundLineNum - state.top + state.headerHeight + 1;
 				let x = background[line.backgroundLineNum].length + 1;
-				c.position(x, y);
+				term.moveTo(x, y);
 				if(line.value) {
-					charm.foreground('green');
-					c.write(line.value);
-					charm.foreground('white');
+					term(line.value);
 				}
 				else {
-					c.write(chalk.dim('______,'));
+					term.colorRgb(50, 50, 50, '______');
+					term(',');
 				}
 			});
 		}
@@ -313,23 +247,5 @@ module.exports = function(configTemplate) {
 	background = background
 			.concat(getFiller(prev.path, []));
 
-	console.log(background);
 	editor(background, result.lines, process.stdin);
-
-	// async.eachSeries(
-	// 	result.lines,
-	// 	function(line, cb) {
-	// 		displayFiller(prev.path || [], line.path);
-	// 		let lineString = getLine(process.stdout, line);
-	// 		getLineValue(lineString, process.stdin, c, (err, value) => {
-	// 			line.value = value;
-	// 			cb();
-	// 		});
-	// 		prev = line;
-	// 	},
-	// 	function(err, results) {
-	// 		displayFiller(prev.path, []);
-	// 		console.log(result.lines);
-	// 	}
-	// );
 };
