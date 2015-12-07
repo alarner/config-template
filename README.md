@@ -77,9 +77,16 @@ configTemplate(tpl).then(function(config) {
 
 ![image](out.gif)
 
-## supported data types
+## Supported data types
 
 * string
 * number
 * boolean
 * json
+
+## Features
+
+* Basic data validation
+* Ability to ignore / remove properties from the config object
+* Set empty strings
+* Color coding
