@@ -1,7 +1,7 @@
 # config-template
 Create server specific configuration files from a template via the command line.
 
-![image](out.gif)
+![image](/out.gif)
 
 ### Use case
 
