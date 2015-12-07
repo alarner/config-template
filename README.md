@@ -75,7 +75,7 @@ configTemplate(tpl).then(function(config) {
 */
 ```
 
-![image](out.gif)
+![image](/out.gif)
 
 ## Supported data types
 
