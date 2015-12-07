@@ -1,11 +1,13 @@
 /*eslint strict:0 */
 'use strict';
 let _ = require('lodash');
-let term = require( 'terminal-kit' ).terminal;
+let term = require('terminal-kit').terminal;
 let keypress = require('keypress');
 let spawn = require('child_process').spawn;
+let validator = require('validator');
 
 const TAB = '    ';
+const helpRegex = /^\[(string|number|boolean|json)\].*$/i;
 
 function recurse(obj, counter, path) {
 	counter = counter || 1;
@@ -16,7 +18,29 @@ function recurse(obj, counter, path) {
 		counter: counter
 	};
 	if(!_.isObject(obj)) {
-		returnObject.lines.push({line: counter, path: path, help: obj, value: '', deleted: false});
+		let match = null;
+		let type = 'string';
+		
+		if(!_.isString(obj)) {
+			obj = obj.toString();
+		}
+
+		if(match = obj.match(helpRegex)) {
+			type = match[1];
+		}
+		else {
+			obj = '[string] '+obj;
+		}
+
+		returnObject.lines.push({
+			line: counter,
+			path: path,
+			help: obj,
+			value: '',
+			deleted: false,
+			empty: false,
+			type: type.toLowerCase()
+		});
 		returnObject.counter++;
 	}
 	else {
@@ -46,7 +70,7 @@ function getFiller(fromPath, toPath) {
 		fromPath.pop();
 	
 		while(!_.isEqual(fromPath, toPath.slice(0, fromPath.length))) {
-			result.push(TAB.repeat(fromPath.length)+'}');
+			result.push(TAB.repeat(fromPath.length)+'},');
 			fromPath.pop();
 		}
 	}
@@ -59,7 +83,7 @@ function getFiller(fromPath, toPath) {
 	}
 
 	if(!toPath.length) {
-		result.push('}');
+		result.push('},');
 	}
 
 	return result;
@@ -88,7 +112,8 @@ function editor(background, lines, readStream) {
 		top: 0,
 		headerHeight: 2,
 		footerHeight: 2,
-		currentLineIndex: 0
+		currentLineIndex: 0,
+		error: ''
 	};
 	return new Promise((resolve, reject) => {
 		keypress(process.stdin);
@@ -108,39 +133,136 @@ function editor(background, lines, readStream) {
 		function onKeyPress(text, key) {
 			// {"name":"c","ctrl":true,"meta":false,"shift":false,"sequence":"\u0003"}
 			let charCode = text ? text.charCodeAt(0) : null;
-			if(key.ctrl) {
+			let line = lines[state.currentLineIndex];
+			if(key && key.ctrl) {
 				if(key.name === 'c') {
 					exit((err, result) => {
 						if(result) {
 							readStream.removeListener('keypress', onKeyPress);
 							readStream.pause();
 							term.moveTo(1, state.height+1);
+							console.log('');
 							resolve();
 						}
 					});
 				}
+				else if(key.name === 'e' && line.type === 'string') {
+					line.empty = true;
+					line.deleted = false;
+					line.value = '';
+					state.cursor.x = background[line.backgroundLineNum].length + 2;
+					render();
+				}
+				else if(key.name === 'r') {
+					line.deleted = true;
+					line.empty = false;
+					line.value = '';
+					state.cursor.x = background[line.backgroundLineNum].length + 1;
+					render();
+				}
 			}
-			else if(key.name === 'return') {
+			else if(key && key.name === 'return') {
 				goToLine(state.currentLineIndex+1);
 			}
-			else if(key.name === 'down') {
+			else if(key && key.name === 'down') {
 				goToLine(state.currentLineIndex+1);
 			}
-			else if(key.name === 'up') {
+			else if(key && key.name === 'up') {
 				goToLine(state.currentLineIndex-1);
 			}
-			else if(key.name === 'left') {
-				term.left(1);
+			else if(key && key.name === 'left') {
+				let offset = line.type === 'string' && !line.deleted ? 1 : 0;
+				if(state.cursor.x-1 > background[line.backgroundLineNum].length + offset) {
+					state.cursor.x--;
+					render();
+				}
 			}
-			else if(key.name === 'right') {
-				term.right(1);
+			else if(key && key.name === 'right') {
+				let offset = line.type === 'string' && !line.deleted ? 1 : 0;
+				if(state.cursor.x+1 <= background[line.backgroundLineNum].length + line.value.length + offset + 1) {
+					state.cursor.x++;
+					render();
+				}
+			}
+			else if(key && key.name === 'backspace') {
+				let offset = line.type === 'string' && !line.deleted ? 1 : 0;
+				if(state.cursor.x-1 > background[line.backgroundLineNum].length + offset) {
+					del();
+				}
+				
 			}
 			else if(charCode >= 32 && charCode <= 126) {
-				process.stdout.write(text);
+				insert(text);
 			}
 		}
 
+		function splice(text, idx, rem, str) {
+		    return text.slice(0, idx) + str + text.slice(idx + Math.abs(rem));
+		};
+
+		function insert(char) {
+			let line = lines[state.currentLineIndex];
+			let pos = state.cursor.x - background[line.backgroundLineNum].length;
+			state.cursor.x++;
+
+			// Deal with quotation marks
+			if(line.type === 'string' && !line.empty) {
+				pos--;
+				if(!line.value){
+					state.cursor.x++;
+				}
+			}
+			line.deleted = false;
+			line.empty = true;
+			line.value = splice(line.value, pos-1, 0, char);
+			render();
+		}
+
+		function del() {
+			let line = lines[state.currentLineIndex];
+			let pos = state.cursor.x - background[line.backgroundLineNum].length;
+			state.cursor.x--;
+
+			// Deal with quotation marks
+			if(line.value && line.type === 'string' && !line.empty) {
+				pos--;
+			}
+
+			line.value = splice(line.value, pos-2, 1, '');
+
+			// Deal with removing marks
+			if(!line.value && line.type === 'string' && !line.empty) {
+				state.cursor.x--;
+			}
+
+			render();
+		}
+
+		function checkError(line) {
+			if(!line.value) {
+				return '';
+			}
+			switch(line.type) {
+				case 'number':
+					return validator.isDecimal(line.value) ? '' : 'Invalid number';
+				case 'boolean':
+					line.value = line.value.toLowerCase();
+					return validator.isIn(line.value, ['true', 'false']) ? '' : 'Invalid boolean';
+				case 'json':
+					return validator.isJSON(line.value) ? '' : 'Invalid JSON';
+			}
+			return '';
+		}
+
 		function goToLine(num) {
+			// Validate data
+			let line = lines[state.currentLineIndex];
+			state.error = checkError(line);
+			if(state.error) {
+				return render();
+			}
+
+			// Move line
 			let updatedNum = num;
 			if(num < 0) {
 				state.top = 0;
@@ -189,9 +311,10 @@ function editor(background, lines, readStream) {
 			term.moveTo(1, state.headerHeight);
 			term('-'.repeat(state.width));
 			term.moveTo(1, 1);
-			term('dimensions: '+state.width + 'x' + state.height+' ');
-			term('cursor: '+state.cursor.x + ',' + state.cursor.y+' ');
-			term(state.top.toString()+' '+(state.height - state.headerHeight).toString());
+			term('DONE: ctrl + s | CANCEL: ctrl + c | SET EMPTY: ctrl + e | REMOVE: ctrl + r');
+			// term('dimensions: '+state.width + 'x' + state.height+' ');
+			// term('cursor: '+state.cursor.x + ',' + state.cursor.y+' ');
+			// term(state.top.toString()+' '+(state.height - state.headerHeight).toString());
 		}
 
 		function renderFooter() {
@@ -199,7 +322,12 @@ function editor(background, lines, readStream) {
 			term.eraseDisplayBelow();
 			term('-'.repeat(state.width));
 			term.moveTo(1, state.height - state.footerHeight + 2);
-			term('Description: '+lines[state.currentLineIndex].help);
+			if(state.error) {
+				term.brightRed(state.error);
+			}
+			else {
+				term('Description: '+lines[state.currentLineIndex].help);
+			}
 		}
 
 		function renderBody() {
@@ -220,12 +348,35 @@ function editor(background, lines, readStream) {
 				let x = background[line.backgroundLineNum].length + 1;
 				term.moveTo(x, y);
 				if(line.value) {
-					term(line.value);
+					switch(line.type) {
+						case 'string':
+							term.yellow('"'+line.value+'"');
+						break;
+						case 'number':
+							term.cyan(line.value);
+						break;
+						case 'boolean':
+							term.magenta(line.value);
+						break;
+						case 'json':
+							term.red(line.value);
+						break;
+						default:
+							term(line.value);
+						break;
+					}
+					
+				}
+				else if(line.empty) {
+					term.yellow('""');
+				}
+				else if(line.deleted) {
+					term.italic.colorRgb(50, 50, 50, '- removed -');
 				}
 				else {
 					term.colorRgb(50, 50, 50, '______');
-					term(',');
 				}
+				term(',');
 			});
 		}
 	});
@@ -246,6 +397,7 @@ module.exports = function(configTemplate) {
 	});
 	background = background
 			.concat(getFiller(prev.path, []));
+	background[background.length-1] = background[background.length-1].substr(0, background[background.length-1].length-1);
 
 	editor(background, result.lines, process.stdin);
 };

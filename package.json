@@ -11,6 +11,7 @@
   "dependencies": {
     "keypress": "^0.2.1",
     "lodash": "^3.10.1",
-    "terminal-kit": "^0.16.7"
+    "terminal-kit": "^0.16.7",
+    "validator": "^4.4.0"
   }
 }
