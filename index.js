@@ -213,22 +213,22 @@ function editor(background, lines, readStream) {
 				}
 			}
 			line.deleted = false;
-			line.empty = true;
+			line.empty = false;
 			line.value = splice(line.value, pos-1, 0, char);
 			render();
 		}
 
 		function del() {
 			let line = lines[state.currentLineIndex];
-			let pos = state.cursor.x - background[line.backgroundLineNum].length;
+			let pos = state.cursor.x - background[line.backgroundLineNum].length - 2;
 			state.cursor.x--;
 
 			// Deal with quotation marks
 			if(line.value && line.type === 'string' && !line.empty) {
-				pos--;
+				pos -= 1;
 			}
-
-			line.value = splice(line.value, pos-2, 1, '');
+			
+			line.value = splice(line.value, pos, 1, '');
 
 			// Deal with removing marks
 			if(!line.value && line.type === 'string' && !line.empty) {
@@ -249,7 +249,7 @@ function editor(background, lines, readStream) {
 					line.value = line.value.toLowerCase();
 					return validator.isIn(line.value, ['true', 'false']) ? '' : 'Invalid boolean';
 				case 'json':
-					return validator.isJSON(line.value) ? '' : 'Invalid JSON';
+					return validator.isJSON(line.value) ? '' : 'Invalid JSON. Use double quotes on keys and values.';
 			}
 			return '';
 		}
@@ -278,7 +278,7 @@ function editor(background, lines, readStream) {
 				state.top += y - state.top + 1;
 			}
 			else if(num >= lines.length) {
-				state.top = background.length - state.height + state.headerHeight + state.footerHeight;
+				state.top = Math.max(0, background.length - state.height + state.headerHeight + state.footerHeight);
 			}
 			else if(y > state.height - state.headerHeight) {
 				state.top += y - state.height + state.headerHeight;
@@ -359,7 +359,7 @@ function editor(background, lines, readStream) {
 							term.magenta(line.value);
 						break;
 						case 'json':
-							term.red(line.value);
+							term.colorRgb(150, 200, 255, line.value);
 						break;
 						default:
 							term(line.value);
