@@ -138,11 +138,14 @@ function editor(background, lines, readStream) {
 				if(key.name === 'c') {
 					exit((err, result) => {
 						if(result) {
-							readStream.removeListener('keypress', onKeyPress);
-							readStream.pause();
-							term.moveTo(1, state.height+1);
-							console.log('');
-							resolve();
+							reject('Edit session canceled by user.');
+						}
+					});
+				}
+				if(key.name === 's') {
+					exit((err, result) => {
+						if(result) {
+							resolve(buildObject());
 						}
 					});
 				}
@@ -293,7 +296,46 @@ function editor(background, lines, readStream) {
 			render();
 		}
 
+		function buildObject() {
+			let obj = {};
+
+			lines.forEach((line) => {
+				if(line.deleted) {
+					return;
+				}
+				let target = obj;
+				for(let i=0; i<line.path.length-1; i++) {
+					if(!target.hasOwnProperty(line.path[i])) {
+						let newTarget = {};
+						target[line.path[i]] = newTarget;
+						target = newTarget;
+					}
+				}
+				target[line.path[line.path.length-1]] = getLineValue(line);
+			});
+
+			return obj;
+		}
+
+		function getLineValue(line) {
+			switch(line.type) {
+				case 'string':
+					return line.value;
+				case 'number':
+					return parseFloat(line.value);
+				case 'boolean':
+					return (line.value === 'true');
+				case 'json':
+					return JSON.parse(line.value);
+			}
+			return null;
+		}
+
 		function exit(cb) {
+			readStream.removeListener('keypress', onKeyPress);
+			readStream.pause();
+			term.moveTo(1, state.height+1);
+			console.log('');
 			cb(null, true);
 		}
 
@@ -399,5 +441,5 @@ module.exports = function(configTemplate) {
 			.concat(getFiller(prev.path, []));
 	background[background.length-1] = background[background.length-1].substr(0, background[background.length-1].length-1);
 
-	editor(background, result.lines, process.stdin);
+	return editor(background, result.lines, process.stdin);
 };

@@ -91,3 +91,8 @@ configTemplate(tpl).then(function(config) {
 * Ability to ignore / remove properties from the config object
 * Set empty strings
 * Color coding
+
+## Todo
+
+* unit tests
+* horizontal scrolling
