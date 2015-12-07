@@ -298,6 +298,8 @@ function editor(background, lines, readStream) {
 
 		function buildObject() {
 			let obj = {};
+			term.eraseDisplay();
+			console.log(lines);
 
 			lines.forEach((line) => {
 				if(line.deleted) {
@@ -308,8 +310,8 @@ function editor(background, lines, readStream) {
 					if(!target.hasOwnProperty(line.path[i])) {
 						let newTarget = {};
 						target[line.path[i]] = newTarget;
-						target = newTarget;
 					}
+					target = target[line.path[i]];
 				}
 				target[line.path[line.path.length-1]] = getLineValue(line);
 			});
