@@ -3,6 +3,10 @@ Create server specific configuration files from a template via the command line.
 
 ![image](/out.gif)
 
+### Install
+
+`npm install --save config-template`
+
 ### Use case
 
 * Deploying your app to a new server via an automated script
