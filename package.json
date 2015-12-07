@@ -1,6 +1,6 @@
 {
   "name": "config-template",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "A command line utility to traverse a JSON formatted template configuration file and produce a new configuration object",
   "main": "index.js",
   "scripts": {
