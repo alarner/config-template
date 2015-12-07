@@ -86,6 +86,7 @@ configTemplate(tpl).then(function(config) {
 
 ## Features
 
+* Displays your customized description (from your template) of the config property when that property is selected.
 * Basic data validation
 * Ability to ignore / remove properties from the config object
 * Set empty strings
