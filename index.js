@@ -335,6 +335,7 @@ function editor(background, lines, readStream) {
 		function exit(cb) {
 			readStream.removeListener('keypress', onKeyPress);
 			readStream.pause();
+			readStream.setRawMode('false');
 			term.moveTo(1, state.height+1);
 			console.log('');
 			cb(null, true);
