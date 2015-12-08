@@ -299,7 +299,6 @@ function editor(background, lines, readStream) {
 		function buildObject() {
 			let obj = {};
 			term.eraseDisplay();
-			console.log(lines);
 
 			lines.forEach((line) => {
 				if(line.deleted) {
