@@ -121,7 +121,7 @@ function editor(background, lines, readStream) {
 
 		readStream.resume();
 		readStream.setEncoding('utf8');
-		readStream.setRawMode('true');
+		readStream.setRawMode(true);
 
 		getTermSize((w, h) => {
 			state.width = w;
@@ -335,7 +335,7 @@ function editor(background, lines, readStream) {
 		function exit(cb) {
 			readStream.removeListener('keypress', onKeyPress);
 			readStream.pause();
-			readStream.setRawMode('false');
+			readStream.setRawMode(false);
 			term.moveTo(1, state.height+1);
 			console.log('');
 			cb(null, true);
