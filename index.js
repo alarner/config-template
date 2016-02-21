@@ -130,6 +130,8 @@ function editor(background, lines, readStream) {
 			goToLine(state.currentLineIndex);
 		});
 
+		setTimeout(render, 200);
+
 		function onKeyPress(text, key) {
 			// {"name":"c","ctrl":true,"meta":false,"shift":false,"sequence":"\u0003"}
 			let charCode = text ? text.charCodeAt(0) : null;
