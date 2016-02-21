@@ -89,18 +89,6 @@ function getFiller(fromPath, toPath) {
 	return result;
 }
 
-function getTermSize(cb){
-    spawn('resize').stdout.on('data', function(data){
-        data = String(data);
-        let lines = data.split('\n');
-        let cols = Number(lines[0].match(/^COLUMNS=([0-9]+);$/)[1]);
-        let rows = Number(lines[1].match(/^LINES=([0-9]+);$/)[1]);
-        if (cb) {
-            cb(cols, rows);
-        }
-    });
-}
-
 function editor(background, lines, readStream) {
 	let state = {
 		width: null,
@@ -122,13 +110,11 @@ function editor(background, lines, readStream) {
 		readStream.resume();
 		readStream.setEncoding('utf8');
 		readStream.setRawMode(true);
+		state.width = process.stdout.columns;
+		state.height = process.stdout.rows;
 
-		getTermSize((w, h) => {
-			state.width = w;
-			state.height = h;
-			readStream.on('keypress', onKeyPress);
-			goToLine(state.currentLineIndex);
-		});
+		readStream.on('keypress', onKeyPress);
+		goToLine(state.currentLineIndex);
 
 		setTimeout(render, 200);
 
@@ -202,7 +188,7 @@ function editor(background, lines, readStream) {
 		}
 
 		function splice(text, idx, rem, str) {
-		    return text.slice(0, idx) + str + text.slice(idx + Math.abs(rem));
+			return text.slice(0, idx) + str + text.slice(idx + Math.abs(rem));
 		};
 
 		function insert(char) {
