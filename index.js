@@ -459,7 +459,11 @@ module.exports = function(configTemplate, options) {
 	if (!options) options = {};
 	if (!options.inputSource) options.inputSource = process.stdin;
 	if (!options.values) options.values = {};
-	let parsedTmpl = interpretTmpl(appendExtraData(configTemplate, options.values));
+	if (options.appendExtraData==null) options.appendExtraData = true;
+	if (options.appendExtraData) {
+		configTemplate = appendExtraData(configTemplate, options.values);
+	}
+	let parsedTmpl = interpretTmpl(configTemplate);
 	setDefaultValues(parsedTmpl, options.values);
 	let prev = {};
 	let background = [];

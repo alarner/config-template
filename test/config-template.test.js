@@ -84,6 +84,48 @@ describe('Template Editor', function(){
     fakeSTDIN.keypress({name:'s', ctrl:true});
   });
 
+  it('appends extra data from values by default', function(done){
+    var fakeSTDIN = new helper.FakeSTDIN();
+    configTemplate({ // Template
+      aa: '[string] Some text.'
+    }, { // Options
+      inputSource: fakeSTDIN,
+      values: {
+        aa: 'Banana',
+        bb: 12345
+      }
+    }).then(function(config) {
+      config.should.be.deep.equal({
+        aa: 'Banana',
+        bb: 12345
+      });
+      done();
+    }).catch(done);
+    // Simulate use input:
+    fakeSTDIN.keypress({name:'s', ctrl:true});
+  });
+
+  it('does not append extra data if appendExtraData==false', function(done){
+    var fakeSTDIN = new helper.FakeSTDIN();
+    configTemplate({ // Template
+      aa: '[string] Some text.'
+    }, { // Options
+      inputSource: fakeSTDIN,
+      appendExtraData: false,
+      values: {
+        aa: 'Banana',
+        bb: 12345
+      }
+    }).then(function(config) {
+      config.should.be.deep.equal({
+        aa: 'Banana'
+      });
+      done();
+    }).catch(done);
+    // Simulate use input:
+    fakeSTDIN.keypress({name:'s', ctrl:true});
+  });
+
 });
 
 describe('Editor Helpers', function(){
