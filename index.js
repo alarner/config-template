@@ -9,6 +9,40 @@ let validator = require('validator');
 const TAB = '    ';
 const helpRegex = /^\[(string|number|boolean|json)\].*$/i;
 
+function appendExtraData(tmpl, extra) {
+	var returnObject = {};
+	if (!extra) extra = {};
+	for (let key in tmpl) {
+		if (tmpl.hasOwnProperty(key)) {
+			if (_.isObject(tmpl[key])) {
+				returnObject[key] = appendExtraData(tmpl[key], extra[key]);
+			} else {
+				returnObject[key] = tmpl[key];
+			}
+		}
+	}
+	for (let key in extra) {
+		if (extra.hasOwnProperty(key)) {
+			if (_.isObject(extra[key])) {
+				if (!tmpl[key]) tmpl[key] = {};
+				if (!tmpl[key].toString().match(/^\[json\].*/))
+					returnObject[key] = appendExtraData(tmpl[key], extra[key]);
+			} else {
+				if (!tmpl.hasOwnProperty(key)) returnObject[key] = extra[key];
+			}
+		}
+	}
+	return returnObject;
+}
+
+function setDefaultValues(parsedTmpl, values) {
+	for (var line,i=0; line=parsedTmpl.lines[i]; i++) {
+		var obj = values;
+		for (var k,j=0; k=line.path[j]; j++) obj = obj[k] || '';
+		line.value = obj.toString();
+	}
+}
+
 function interpretTmpl(obj, counter, path) {
 	counter = counter || 1;
 	path = path || [];
@@ -424,11 +458,13 @@ function editor(background, lines, readStream) {
 module.exports = function(configTemplate, options) {
 	if (!options) options = {};
 	if (!options.inputSource) options.inputSource = process.stdin;
-	let result = interpretTmpl(configTemplate);
+	if (!options.values) options.values = {};
+	let parsedTmpl = interpretTmpl(appendExtraData(configTemplate, options.values));
+	setDefaultValues(parsedTmpl, options.values);
 	let prev = {};
 	let background = [];
 
-	result.lines.forEach((line) => {
+	parsedTmpl.lines.forEach((line) => {
 		background = background
 			.concat(getFiller(prev.path || [], line.path))
 			.concat(getLine(line));
@@ -439,7 +475,9 @@ module.exports = function(configTemplate, options) {
 			.concat(getFiller(prev.path, []));
 	background[background.length-1] = background[background.length-1].substr(0, background[background.length-1].length-1);
 
-	return editor(background, result.lines, options.inputSource);
+	return editor(background, parsedTmpl.lines, options.inputSource);
 };
 
 module.exports.interpretTmpl = interpretTmpl;
+module.exports.appendExtraData = appendExtraData;
+module.exports.setDefaultValues = setDefaultValues;
