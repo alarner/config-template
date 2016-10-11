@@ -9,20 +9,26 @@ let validator = require('validator');
 const TAB = '    ';
 const helpRegex = /^\[(string|number|boolean|json)\].*$/i;
 
-function recurse(obj, counter, path) {
+function interpretTmpl(obj, counter, path) {
 	counter = counter || 1;
 	path = path || [];
+
+	let value = '';
 
 	let returnObject = {
 		lines: [],
 		counter: counter
 	};
+
 	if(!_.isObject(obj)) {
 		let match = null;
 		let type = 'string';
 		
-		if(!_.isString(obj)) {
-			obj = obj.toString();
+		if(!_.isString(obj) || !obj.match(helpRegex)) {
+			value = obj.toString();
+			if (_.isString(obj))  obj = '[string] Defaults to "'+obj.toString()+'"';
+			if (_.isNumber(obj))  obj = '[number] Defaults to ' +obj.toString();
+			if (_.isBoolean(obj)) obj = '[boolean] Defaults to '+obj.toString();
 		}
 
 		if(match = obj.match(helpRegex)) {
@@ -36,7 +42,7 @@ function recurse(obj, counter, path) {
 			line: counter,
 			path: path,
 			help: obj,
-			value: '',
+			value: value,
 			deleted: false,
 			empty: false,
 			type: type.toLowerCase()
@@ -48,7 +54,7 @@ function recurse(obj, counter, path) {
 			if(obj.hasOwnProperty(key)) {
 				let newPath = _.clone(path);
 				newPath.push(key);
-				let result = recurse(obj[key], returnObject.counter, newPath);
+				let result = interpretTmpl(obj[key], returnObject.counter, newPath);
 				returnObject.counter = result.counter;
 				returnObject.lines = returnObject.lines.concat(result.lines);
 			}
@@ -418,7 +424,7 @@ function editor(background, lines, readStream) {
 module.exports = function(configTemplate, options) {
 	if (!options) options = {};
 	if (!options.inputSource) options.inputSource = process.stdin;
-	let result = recurse(configTemplate);
+	let result = interpretTmpl(configTemplate);
 	let prev = {};
 	let background = [];
 
@@ -435,3 +441,5 @@ module.exports = function(configTemplate, options) {
 
 	return editor(background, result.lines, options.inputSource);
 };
+
+module.exports.interpretTmpl = interpretTmpl;
