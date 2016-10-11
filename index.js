@@ -415,7 +415,9 @@ function editor(background, lines, readStream) {
 	
 }
 
-module.exports = function(configTemplate) {
+module.exports = function(configTemplate, options) {
+	if (!options) options = {};
+	if (!options.inputSource) options.inputSource = process.stdin;
 	let result = recurse(configTemplate);
 	let prev = {};
 	let background = [];
@@ -431,5 +433,5 @@ module.exports = function(configTemplate) {
 			.concat(getFiller(prev.path, []));
 	background[background.length-1] = background[background.length-1].substr(0, background[background.length-1].length-1);
 
-	return editor(background, result.lines, process.stdin);
+	return editor(background, result.lines, options.inputSource);
 };
