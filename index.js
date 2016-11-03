@@ -36,9 +36,12 @@ function appendExtraData(tmpl, extra) {
 }
 
 function setDefaultValues(parsedTmpl, values) {
-	for (var line,i=0; line=parsedTmpl.lines[i]; i++) {
-		var obj = values;
-		for (var k,j=0; k=line.path[j]; j++) obj = obj[k] || '';
+	for (let i=0; i<parsedTmpl.lines.length; i++) {
+		const line = parsedTmpl.lines[i];
+		let obj = values;
+		for(let j=0; j<line.path.length; j++) {
+			obj = obj[line.path[j]];
+		}
 		line.value = obj.toString();
 	}
 }
