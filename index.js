@@ -9,10 +9,14 @@ let validator = require('validator');
 const TAB = '    ';
 const helpRegex = /^\[(string|number|boolean|json)\].*$/i;
 
+/*
+ * Takes a config template as well as extra data that should be added to the template. Returns a new
+ * template with the extra data included.
+ */
 function appendExtraData(tmpl, extra) {
-	var returnObject = {};
+	const returnObject = {};
 	if (!extra) extra = {};
-	for (let key in tmpl) {
+	for (const key in tmpl) {
 		if (tmpl.hasOwnProperty(key)) {
 			if (_.isObject(tmpl[key])) {
 				returnObject[key] = appendExtraData(tmpl[key], extra[key]);
@@ -21,14 +25,14 @@ function appendExtraData(tmpl, extra) {
 			}
 		}
 	}
-	for (let key in extra) {
+	for (const key in extra) {
 		if (extra.hasOwnProperty(key)) {
 			if (_.isObject(extra[key])) {
 				if (!tmpl[key]) tmpl[key] = {};
 				if (!tmpl[key].toString().match(/^\[json\].*/))
 					returnObject[key] = appendExtraData(tmpl[key], extra[key]);
 			} else {
-				if (!tmpl.hasOwnProperty(key)) returnObject[key] = extra[key];
+				if (!tmpl.hasOwnProperty(key)) returnObject[key] = buildTemplateStringFromValue(extra[key]);
 			}
 		}
 	}
@@ -38,12 +42,28 @@ function appendExtraData(tmpl, extra) {
 function setDefaultValues(parsedTmpl, values) {
 	for (let i=0; i<parsedTmpl.lines.length; i++) {
 		const line = parsedTmpl.lines[i];
-		let obj = values;
+		let obj = values || '';
 		for(let j=0; j<line.path.length; j++) {
-			obj = obj[line.path[j]];
+			obj = obj[line.path[j]] || '';
 		}
 		line.value = obj.toString();
 	}
+}
+
+function buildTemplateStringFromValue(obj) {
+	if (_.isString(obj)) {
+		return '[string] Defaults to "'+obj.toString()+'"';
+	}
+	if (_.isNumber(obj)) {
+		return '[number] Defaults to ' +obj.toString();
+	}
+	if (_.isBoolean(obj)) {
+		return '[boolean] Defaults to '+obj.toString();
+	}
+	if (_.isObject(obj)) {
+		return '[json] Defaults to '+JSON.stringify(obj);
+	}
+	return false;
 }
 
 function interpretTmpl(obj, counter, path) {
@@ -59,20 +79,13 @@ function interpretTmpl(obj, counter, path) {
 
 	if(!_.isObject(obj)) {
 		let match = null;
-		let type = 'string';
-		
-		if(!_.isString(obj) || !obj.match(helpRegex)) {
-			value = obj.toString();
-			if (_.isString(obj))  obj = '[string] Defaults to "'+obj.toString()+'"';
-			if (_.isNumber(obj))  obj = '[number] Defaults to ' +obj.toString();
-			if (_.isBoolean(obj)) obj = '[boolean] Defaults to '+obj.toString();
-		}
+		let type = null;
 
 		if(match = obj.match(helpRegex)) {
 			type = match[1];
 		}
 		else {
-			obj = '[string] '+obj;
+			throw new Error(obj+' does not adhere to template syntax: [string|number|boolean|json] help message');
 		}
 
 		returnObject.lines.push({
@@ -488,3 +501,4 @@ module.exports = function(configTemplate, options) {
 module.exports.interpretTmpl = interpretTmpl;
 module.exports.appendExtraData = appendExtraData;
 module.exports.setDefaultValues = setDefaultValues;
+module.exports.buildTemplateStringFromValue = buildTemplateStringFromValue;

@@ -88,6 +88,15 @@ configTemplate(tpl).then(function(config) {
 * boolean
 * json
 
+## Options
+
+An options object can be passed as the second argument to config loader. Config loader understand 
+the following options...
+
+* inputSource - defaults to stdin. Mostly used for testing, but you can supply a different input source if you choose.
+* values - defaults to an empty object. This option allows you to specify any values that you'd like to be pre-filled in.
+* appendExtraData - defaults to true. If this is set to true and options.values has properties that don'e match up with one of your template properties, config loader will automatically add that property to the template. If it is set to false then extraneous properties in options.values will be ignored.
+
 ## Features
 
 * Displays your customized description (from your template) of the config property when that property is selected.
@@ -98,5 +107,4 @@ configTemplate(tpl).then(function(config) {
 
 ## Todo
 
-* unit tests
 * horizontal scrolling
