@@ -10,13 +10,13 @@
   "license": "ISC",
   "dependencies": {
     "keypress": "^0.2.1",
-    "lodash": "^3.10.1",
-    "terminal-kit": "^0.16.7",
-    "validator": "^4.4.0"
+    "lodash": "^4.17.2",
+    "terminal-kit": "^0.25.3",
+    "validator": "^6.1.0"
   },
   "devDependencies": {
     "chai": "^3.5.0",
-    "mocha": "^3.1.2"
+    "mocha": "^3.2.0"
   },
   "repository": {
     "type": "git",
